@@ -1,6 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:todo/models/todo.dart';
-import 'package:http/http.dart' as http;
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -14,20 +14,26 @@ class _HomepageState extends State<Homepage> {
 
   fetchTodos() async {
     try {
-      final response = await http.get(
-        Uri.parse("https://jsonplaceholder.typicode.com/todos"),
+      final dio = Dio();
+      final response = await dio.get(
+        ("https://jsonplaceholder.typicode.com/todos"),
       );
+      final responseBody = response.data as List<dynamic>;
+
+      for (var todo in responseBody) {
+        todos.add(Todo.fromMap(todo));
+      }
     } catch (e) {
       print("Exception $e");
     }
   }
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    fetchTodos();
-  }
+  // @override
+  // void initState() {
+  //   // TODO: implement initState
+  //   super.initState();
+  //   fetchTodos();
+  // }
 
   final GlobalKey<FormState> todoformKey = GlobalKey();
   String title = "";
@@ -46,33 +52,44 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("To-Do Application")),
+      appBar: AppBar(title: Text("To-Do")),
       //ListView : dekhaune column jstai kk data rakhni vnerw , builder : function ho josle kati patak buid garni vnerw vnxw , item builder : k dekhauni k display garni kati choti dekhauni ,ctx= context(for finding widget) index =i,
-      body: ListView.builder(
-        itemBuilder: (ctx, i) {
-          return ListTile(
-            leading: Checkbox(
-              value: todos[i].isCompleted,
-              onChanged: (value) {
-                setState(() {
-                  todos[i].isCompleted = value ?? false;
-                });
+      body: FutureBuilder(
+        future: fetchTodos(),
+        builder: (ctx, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return ListView.builder(
+              itemBuilder: (ctx, i) {
+                return ListTile(
+                  leading: Checkbox(
+                    value: todos[i].isCompleted,
+                    onChanged: (value) {
+                      setState(() {
+                        todos[i].isCompleted = value ?? false;
+                      });
+                    },
+                  ),
+                  trailing: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        todos.remove(todos[i]);
+                      });
+                    },
+                    icon: Icon(Icons.delete_outline),
+                    color: Colors.red,
+                  ),
+                  title: Text(todos[i].title),
+                  subtitle: Text(todos[i].description),
+                );
               },
-            ),
-            trailing: IconButton(
-              onPressed: () {
-                setState(() {
-                  todos.remove(todos[i]);
-                });
-              },
-              icon: Icon(Icons.delete_outline),
-              color: Colors.red,
-            ),
-            title: Text(todos[i].title),
-            subtitle: Text(todos[i].description),
-          );
+              itemCount: todos.length,
+            );
+          } else if (snapshot.hasError) {
+            return Text("Error");
+          } else {
+            return Center(child: CircularProgressIndicator());
+          }
         },
-        itemCount: todos.length,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
